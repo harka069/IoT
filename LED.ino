@@ -35,7 +35,7 @@ unsigned long start_time=0;
 int stevec_iteracij=0;
 void setup() {
   Serial.begin(9600);
-  while (!Serial);
+  while (!Serial);//čaka na serijski terminal
 
   // set LED pin to output mode
   pinMode(ledPin, OUTPUT);
@@ -78,13 +78,7 @@ void setup() {
 }
 
 void loop() {
-  if ((time_now - start_time >= 500)){ //test whether the period has elapsed
-        digitalWrite(LED_GREEN, !digitalRead(LED_GREEN));  //if so, change the state of the LED.  Uses a neat trick to change the state
-        Serial.print("BLA");
-        stevec_iteracij++;
-        start_time = time_now;  //IMPORTANT to save the start time of the current LED state.
-        
-     }
+  utripaj(); //cakannje
   // listen for Bluetooth® Low Energy peripherals to connect:
   BLEDevice central = BLE.central();
   
@@ -94,23 +88,21 @@ void loop() {
     // print the central's MAC address:
     Serial.println(central.address());
     
-    /*  
       
-    //ce se ardunio poveze na telefon, lučka 5x utripne 
-    while(stevec_iteracij<6){ 
-     time_now = millis();
-    if(stevec_iteracij <6)
+      
+  
     
-    }   
-    stevec_iteracij=0;
+     
     
-*/
+    
+    
+
     
 
 
     // while the central is still connected to peripheral:
     while (central.connected()) {
-      //digitalWrite(LED_GREEN,LOW);
+      digitalWrite(LED_GREEN,LOW);
       // if the remote device wrote to the characteristic,
       // use the value to control the LED:
       if (switchCharacteristic.written()) {
@@ -129,3 +121,16 @@ void loop() {
     Serial.println(central.address());
   }
 }
+
+int utripaj(){
+  time_now = millis();
+  if (time_now - start_time >= 500){ //test whether the period has elapsed
+        digitalWrite(LED_GREEN, !digitalRead(LED_GREEN));  //if so, change the state of the LED.  Uses a neat trick to change the state
+        Serial.println("waiting for connection");
+        stevec_iteracij++;
+        start_time = time_now;  //IMPORTANT to save the start time of the current LED state.
+        
+  } 
+}
+
+
