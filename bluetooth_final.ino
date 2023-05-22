@@ -41,20 +41,23 @@
 
 /* Includes ---------------------------------------------------------------- */
 #include <PDM.h>
-#include <goldilocks-project-1_inferencing.h>
+#include <MIS_inferencing.h>
 #include <ArduinoBLE.h>
 
 /* BLE guys -------------------------------------------------------------- */
 const int UPDATE_FREQUENCY = 2000;     // Update frequency in ms
-String indikator = "zdrava";
+String indikator = "start";
+String indikator_after = "start";
 long previousMillis = 0; // last time readings were checked, in ms
 //BLEDevice central; spremenil
 
 BLEService environmentService("181A"); // Standard Environmental Sensing service
-BLECharacteristic KokosCharacteristic("5895becc-3aea-4366-82af-369ec681414f", // Custom Characteristics
-                                      BLERead | BLENotify, 1);               // 1234,5678
-BLEDescriptor KokosLabelDescriptor("2901", "zdrava ali bolna kokos");
 
+BLEDescriptor KokosLabelDescriptor("2901", "detekcija zivali");
+BLECharacteristic KokosCharacteristic("5895becc-3aea-4366-82af-369ec681414f",
+                                      BLERead | BLENotify, 1);               // 1234,5678
+//BLEDescriptor KokosLabelDescriptor("2901", "zdrava");
+//KokosCharacteristic.addDescriptor(KokosLabelDescriptor);
 /** Audio buffers, pointers and selectors */
 typedef struct {
     signed short *buffers[2];
@@ -75,17 +78,18 @@ static int print_results = -(EI_CLASSIFIER_SLICES_PER_MODEL_WINDOW);
  */
 void setup()
 {
-    // BLE begin
+     // BLE begin
     if (!BLE.begin()) {
       Serial.println("starting BLE failed!");
       while (1);
     }
+    //BLEDescriptor KokosLabelDescriptor("2901", "zdrava");
     BLE.setLocalName("LED_kristof123");    // Set name for connection
     BLE.setAdvertisedService(environmentService); // Advertise environment service
     environmentService.addCharacteristic(KokosCharacteristic);    // Add color characteristic
     KokosCharacteristic.addDescriptor(KokosLabelDescriptor); // Add color characteristic descriptor
     BLE.addService(environmentService); // Add environment service
-    KokosCharacteristic.writeValue("Zdrava");   // Set initial color value
+    KokosCharacteristic.writeValue("tart");   // Set initial color value
     
     BLE.advertise(); // Start advertising
     Serial.println("Bluetooth® device active, waiting for connections...");
@@ -116,8 +120,8 @@ void setup()
  * @brief      Arduino main function. Runs the inferencing loop.
  */
 void loop()
-{   
-    BLEDevice central = BLE.central();
+{
+     BLEDevice central = BLE.central();
     
     if (central) {
     Serial.print("Connected to central: ");
@@ -152,15 +156,19 @@ void loop()
         for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
             ei_printf("    %s: %.5f\n", result.classification[ix].label, // result.classification[0].label = cluck, result.classification[1].label = sick 
                       result.classification[ix].value); 
+             //KokosCharacteristic.writeValue(result.classification[ix].value.c_str())
         }
 
         if ((float)result.classification[0].value > (float)0.01){ 
-        indikator = "zdrava";
+        indikator = "chicken";
         }else{
-        indikator = "bolna";
+        indikator = "goat";
         }
-        KokosCharacteristic.writeValue(indikator.c_str());
-
+        if (indikator != indikator_after){
+          KokosCharacteristic.writeValue(indikator.c_str());
+          indikator_after = indikator;
+        }
+        
 #if EI_CLASSIFIER_HAS_ANOMALY == 1
         ei_printf("    anomaly score: %.3f\n", result.anomaly);
 #endif
@@ -173,6 +181,8 @@ void loop()
     Serial.println(central.address());
 }//zapira BLE while zanko
 }//zapira loop
+/**
+
 /**
  * @brief      PDM buffer full callback
  *             Get data and call audio thread callback
