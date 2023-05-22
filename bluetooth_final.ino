@@ -98,7 +98,7 @@ void setup()
     Serial.begin(9600);
 
     // comment out the below line to cancel the wait for USB connection (needed for native USB)
-    while (!Serial);
+    //while (!Serial);
     Serial.println("Edge Impulse Inferencing Demo");
 
     // summary of inferencing settings (from model_metadata.h)
