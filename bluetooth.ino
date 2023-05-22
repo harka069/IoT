@@ -16,6 +16,7 @@
 
 // If your target is limited in memory remove this macro to save 10K RAM
 #define EIDSP_QUANTIZE_FILTERBANK   0
+
 /**
  * Define the number of slices per model window. E.g. a model window of 1000 ms
  * with slices per model window set to 4. Results in a slice size of 250 ms.
@@ -40,24 +41,23 @@
 
 /* Includes ---------------------------------------------------------------- */
 #include <PDM.h>
-#include <goldilocks-project-1_inferencing.h>
+#include <MIS_inferencing.h>
 #include <ArduinoBLE.h>
 
 /* BLE guys -------------------------------------------------------------- */
 const int UPDATE_FREQUENCY = 2000;     // Update frequency in ms
-
-
+String indikator = "start";
+String indikator_after = "start";
 long previousMillis = 0; // last time readings were checked, in ms
-BLEDevice central;
+//BLEDevice central; spremenil
 
 BLEService environmentService("181A"); // Standard Environmental Sensing service
 
-
-BLECharacteristic colorCharacteristic("936b6a25-e503-4f7c-9349-bcc76c22b8c3", // Custom Characteristics
-                                      BLERead | BLENotify, 1);               // 1234,5678,
-
-BLEDescriptor colorLabelDescriptor("2901", "16-bit ints: r, g, b, a");
-
+BLEDescriptor KokosLabelDescriptor("2901", "detekcija zivali");
+BLECharacteristic KokosCharacteristic("5895becc-3aea-4366-82af-369ec681414f",
+                                      BLERead | BLENotify, 1);               // 1234,5678
+//BLEDescriptor KokosLabelDescriptor("2901", "zdrava");
+//KokosCharacteristic.addDescriptor(KokosLabelDescriptor);
 /** Audio buffers, pointers and selectors */
 typedef struct {
     signed short *buffers[2];
@@ -78,36 +78,25 @@ static int print_results = -(EI_CLASSIFIER_SLICES_PER_MODEL_WINDOW);
  */
 void setup()
 {
-    // BLE begin
+     // BLE begin
     if (!BLE.begin()) {
       Serial.println("starting BLE failed!");
       while (1);
     }
-    BLE.setLocalName("LED_kristof");    // Set name for connection
+    //BLEDescriptor KokosLabelDescriptor("2901", "zdrava");
+    BLE.setLocalName("LED_kristof123");    // Set name for connection
     BLE.setAdvertisedService(environmentService); // Advertise environment service
-
-    environmentService.addCharacteristic(colorCharacteristic);    // Add color characteristic
-
-    colorCharacteristic.addDescriptor(colorLabelDescriptor); // Add color characteristic descriptor
-
+    environmentService.addCharacteristic(KokosCharacteristic);    // Add color characteristic
+    KokosCharacteristic.addDescriptor(KokosLabelDescriptor); // Add color characteristic descriptor
     BLE.addService(environmentService); // Add environment service
-
-    colorCharacteristic.setValue("");   // Set initial color value
-
+    KokosCharacteristic.writeValue("tart");   // Set initial color value
+    
     BLE.advertise(); // Start advertising
-
-    while (1) {
-      central = BLE.central();
-      if (central) {
-        Serial.print("Connected to central: ");
-        Serial.println(central.address());
-        digitalWrite(LED_BUILTIN, HIGH);
-        break;
-      }
-    }
-
+    Serial.println("Bluetooth® device active, waiting for connections...");
+    
     // put your setup code here, to run once:
-    Serial.begin(115200);
+    Serial.begin(9600);
+
     // comment out the below line to cancel the wait for USB connection (needed for native USB)
     while (!Serial);
     Serial.println("Edge Impulse Inferencing Demo");
@@ -125,7 +114,6 @@ void setup()
         ei_printf("ERR: Could not allocate audio buffer (size %d), this could be due to the window length of your model\r\n", EI_CLASSIFIER_RAW_SAMPLE_COUNT);
         return;
     }
-    int prejsnja, napoved;
 }
 
 /**
@@ -133,13 +121,21 @@ void setup()
  */
 void loop()
 {
-    int tmpl, tmpv = 0;
+     BLEDevice central = BLE.central();
+    
+    if (central) {
+    Serial.print("Connected to central: ");
+    // print the central's BT address:
+    Serial.println(central.address());
+    // turn on the LED to indicate the connection:
+    digitalWrite(LED_BUILTIN, HIGH);
+    
+    while (central.connected()) {
     bool m = microphone_inference_record();
     if (!m) {
         ei_printf("ERR: Failed to record audio...\n");
         return;
     }
-
     signal_t signal;
     signal.total_length = EI_CLASSIFIER_SLICE_SIZE;
     signal.get_data = &microphone_audio_signal_get_data;
@@ -157,25 +153,35 @@ void loop()
         ei_printf("(DSP: %d ms., Classification: %d ms., Anomaly: %d ms.)",
             result.timing.dsp, result.timing.classification, result.timing.anomaly);
         ei_printf(": \n");
-        
         for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
-            ei_printf("    %s: %.5f\n", result.classification[ix].label,
-                      result.classification[ix].value);
-            if(result.classification[ix].value > tmpv){
-              tmpv = result.classification[ix].value;
-              tmpl = ix;
-            }
-        Serial.print(tmpl);
-        BLE.writeValue(tmpl);
-            
+            ei_printf("    %s: %.5f\n", result.classification[ix].label, // result.classification[0].label = cluck, result.classification[1].label = sick 
+                      result.classification[ix].value); 
+             //KokosCharacteristic.writeValue(result.classification[ix].value.c_str())
         }
+
+        if ((float)result.classification[0].value > (float)0.01){ 
+        indikator = "chicken";
+        }else{
+        indikator = "goat";
+        }
+        if (indikator != indikator_after){
+          KokosCharacteristic.writeValue(indikator.c_str());
+          indikator_after = indikator;
+        }
+        
 #if EI_CLASSIFIER_HAS_ANOMALY == 1
         ei_printf("    anomaly score: %.3f\n", result.anomaly);
 #endif
 
         print_results = 0;
     }
-}
+}//zapira while(central.connected)
+    digitalWrite(LED_BUILTIN, LOW);
+    Serial.print("Disconnected from central: ");
+    Serial.println(central.address());
+}//zapira BLE while zanko
+}//zapira loop
+/**
 
 /**
  * @brief      PDM buffer full callback
