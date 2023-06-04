@@ -159,7 +159,7 @@ void loop()
              //KokosCharacteristic.writeValue(result.classification[ix].value.c_str())
         }
 
-        if ((float)result.classification[0].value > (float)0.01){ 
+        if ((float)result.classification[0].value > (float)0.8){ 
         indikator = "chicken";
         }else{
         indikator = "goat";
