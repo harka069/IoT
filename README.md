@@ -1,2 +1,2 @@
-# IoT
-projekt pri predmetu mobilne naprave
+# FluAlert
+Detection of chicken flu with machine learning
